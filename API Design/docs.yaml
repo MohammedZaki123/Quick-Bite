@@ -1,0 +1,3608 @@
+openapi: 3.0.3
+info:
+  title: QuickBite API
+  description: |
+    RESTful API for QuickBite food delivery platform
+    
+    ## Features
+    - Multi-region support
+    - Strong consistency for payments
+    - Real-time order tracking
+    - Restaurant menu management with customizations
+    - Delivery agent assignment and tracking
+    - RBAC for restaurant staff
+    
+  version: 1.0.0
+  contact:
+    name: QuickBite API Support
+    email: api-support@quickbite.com
+
+servers:
+  - url: https://api.quickbite.com/v1
+    description: Production (US-EAST)
+  - url: https://api-west.quickbite.com/v1
+    description: Production (US-WEST)
+  - url: https://api-eu.quickbite.com/v1
+    description: Production (EU)
+  - url: https://api-sandbox.quickbite.com/v1
+    description: Sandbox
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Customers
+    description: Customer profile and address management
+  - name: Restaurants
+    description: Restaurant operations and management
+  - name: Menu
+    description: Menu browsing and management
+  - name: Cart
+    description: Shopping cart operations
+  - name: Orders
+    description: Order placement and management
+  - name: Payments
+    description: Payment processing
+  - name: Delivery
+    description: Delivery agent operations
+  - name: Notifications
+    description: Notification management
+  - name: Admin
+    description: Administrative operations
+  - name: Restaurant Staff
+    description: Manage restaurant staff members and their roles
+  - name: Branch Access
+    description: Control which branches staff members can access
+  - name: Roles & Permissions
+    description: Manage custom roles and permissions
+
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ============================================================================
+  # AUTHENTICATION
+  # ============================================================================
+  
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register new user
+      description: Create a new user account (customer, restaurant owner, or delivery agent)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - phone
+                - name
+                - role
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123!
+                phone:
+                  type: string
+                  pattern: '^\+[1-9]\d{1,14}$'
+                  example: "+12125551234"
+                name:
+                  type: string
+                  maxLength: 100
+                  example: John Doe
+                role:
+                  type: string
+                  enum: [customer, restaurant_staff, delivery_agent]
+                  example: customer
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                    example: john.doe@example.com
+                  phone:
+                    type: string
+                    pattern: '^\+[1-9]\d{1,14}$'
+                    example: "+12125551234"
+                  name:
+                    type: string
+                    maxLength: 100
+                    example: John Doe
+                  role:
+                    type: string
+                    example: customer
+                  access_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  refresh_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  status:
+                    type: string
+                    enum: ["available", "blocked"]
+                    example: available
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login user
+      description: Authenticate user and obtain access tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout user
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Request password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - new_password
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password reset successful
+
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Confirm password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - new_password
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description:  Reset email sent
+
+  # ============================================================================
+  # CUSTOMERS
+  # ============================================================================
+  
+  /customers/me:
+    get:
+      tags: [Customers]
+      summary: Get current customer profile
+      security:
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      responses:
+        '200':
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+    
+    patch:
+      tags: [Customers]
+      summary: Update customer profile
+      security:
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                phone:
+                  type: string
+                  pattern: '^\+[1-9]\d{1,14}$'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/me/addresses:
+    get:
+      tags: [Customers]
+      summary: List customer addresses
+      security:
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      responses:
+        '200':
+          description: List of addresses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Address'
+    
+    post:
+      tags: [Customers]
+      summary: Add new address
+      security:
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/AuthorizationHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '201':
+          description: Address created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+
+  /customers/me/addresses/{address_id}:
+    parameters:
+      - name: address_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    get:
+      tags: [Customers]
+      summary: Get address details
+      responses:
+        '200':
+          description: Address details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+    
+    patch:
+      tags: [Customers]
+      summary: Update address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '200':
+          description: Address updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+    
+    delete:
+      tags: [Customers]
+      summary: Delete address
+      responses:
+        '204':
+          description: Address deleted
+
+  # ============================================================================
+  # RESTAURANTS (Discovery & Browsing)
+  # ============================================================================
+  
+  /restaurants:
+    get:
+      tags: [Restaurants]
+      summary: Search and discover restaurants
+      description: Find restaurants based on location, cuisine, rating, etc.
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+          example: 40.7128
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+          example: -74.0060
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of restaurants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RestaurantSummary'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  /restaurants/{restaurant_id}:
+    parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      tags: [Restaurants]
+      summary: Get restaurant details
+      responses:
+        '200':
+          description: Restaurant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+
+  # ============================================================================
+  # MENU
+  # ============================================================================
+  
+  /restaurants/{restaurant_id}/menu:
+    parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      tags: [Menu]
+      summary: Get restaurant menu
+      description: Retrieve complete menu with categories and items
+      responses:
+        '200':
+          description: Restaurant menu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restaurant_id:
+                    type: integer
+                  restaurant_name:
+                    type: string
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MenuCategory'
+
+  /restaurants/{restaurant_id}/menu/items/{item_id}:
+    parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      tags: [Menu]
+      summary: Get menu item details
+      description: Get detailed information about a specific menu item including customizations
+      responses:
+        '200':
+          description: Menu item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+  /restaurants/{restaurantId}/members:
+    parameters:
+      - $ref: '#/components/parameters/RestaurantId'
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    
+    get:
+      tags: [Restaurant Staff]
+      summary: List restaurant staff members
+      description: |
+        Get all staff members for a restaurant.
+        
+        **Required role:** Owner or Admin
+      responses:
+        '200':
+          description: List of staff members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RestaurantMember'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+              example:
+                data:
+                  - id: 1
+                    user_id: 12345
+                    restaurant_id: 100
+                    user:
+                      name: "John Smith"
+                      email: "john@example.com"
+                      phone: "+12125551234"
+                    role:
+                      id: 2
+                      name: "manager"
+                      permissions: ["orders.read", "orders.update", "menu.update"]
+                    status: "active"
+                    branches: ["US Branch", "UK Branch"]
+                    created_at: "2024-01-15T10:30:00Z"
+                  - id: 2
+                    user_id: 12346
+                    restaurant_id: 100
+                    user:
+                      name: "Jane Doe"
+                      email: "jane@example.com"
+                      phone: "+12125551235"
+                    role:
+                      id: 3
+                      name: "staff"
+                      permissions: ["orders.read", "orders.update"]
+                    status: "active"
+                    branches: [1]
+                    created_at: "2024-01-20T14:20:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    post:
+      tags: [Restaurant Staff]
+      summary: Invite/add staff member
+      description: |
+        Add a new staff member to the restaurant.
+        
+        **Required role:** Owner only
+        
+        **Flow:**
+        1. Invite user by email (if not registered, they receive signup link)
+        2. Assign role
+        3. Optionally assign to specific branches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - role_id
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Email of user to invite
+                  example: "newstaff@example.com"
+                user_id:
+                  type: integer
+                  description: User ID (if user already exists in system)
+                  example: 12347
+                role_id:
+                  type: integer
+                  description: Role to assign to the member
+                  example: 3
+                branch_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: List of branch IDs member can access (empty = all branches)
+                  example: [1, 2]
+                send_invitation:
+                  type: boolean
+                  default: true
+                  description: Send email invitation to the user
+                  example: true
+            examples:
+              inviteNewUser:
+                summary: Invite new user
+                value:
+                  email: "newstaff@example.com"
+                  role_id: 3
+                  branch_ids: [1]
+                  send_invitation: true
+              addExistingUser:
+                summary: Add existing user
+                value:
+                  user_id: 12347
+                  email: "existing@example.com"
+                  role_id: 2
+                  branch_ids: [1, 2, 3]
+      responses:
+        '201':
+          description: Staff member added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member:
+                    $ref: '#/components/schemas/RestaurantMember'
+                  invitation_sent:
+                    type: boolean
+                    example: true
+                  invitation_url:
+                    type: string
+                    format: uri
+                    example: "https://quickbite.com/invitations/abc123"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Only owners can add staff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: "forbidden"
+                  message: "Only restaurant owners can add staff members"
+        '409':
+          description: User already a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: "member_already_exists"
+                  message: "User is already a member of this restaurant"
+
+  /restaurants/{restaurantId}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/RestaurantId'
+      - $ref: '#/components/parameters/MemberId'
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    
+    patch:
+      tags: [Restaurant Staff]
+      summary: Update staff member role/status
+      description: |
+        Update a staff member's role or status.
+        
+        **Required role:** Owner only
+        
+        **Note:** Cannot change owner's role or status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role_id:
+                  type: integer
+                  description: New role ID
+                  example: 2
+                status:
+                  type: string
+                  enum: [active, suspended, inactive]
+                  description: Member status
+                  example: "active"
+            examples:
+              changeRole:
+                summary: Change role from staff to manager
+                value:
+                  role_id: 2
+              suspendMember:
+                summary: Suspend member
+                value:
+                  status: "suspended"
+              reactivateMember:
+                summary: Reactivate suspended member
+                value:
+                  status: "active"
+      responses:
+        '200':
+          description: Member updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestaurantMember'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                cannotChangeOwner:
+                  value:
+                    error:
+                      code: "cannot_modify_owner"
+                      message: "Cannot change owner's role or status"
+                invalidRole:
+                  value:
+                    error:
+                      code: "invalid_role"
+                      message: "Role does not exist"
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags: [Restaurant Staff]
+      summary: Remove staff member
+      description: |
+        Remove a staff member from the restaurant.
+        
+        **Required role:** Owner only
+        
+        **Note:** Cannot remove the owner
+      responses:
+        '204':
+          description: Staff member removed successfully
+        '400':
+          description: Cannot remove owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: "cannot_remove_owner"
+                  message: "Cannot remove the restaurant owner"
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # BRANCH ACCESS CONTROL (per member)
+  # ============================================================================
+  
+  /restaurants/{restaurantId}/members/{memberId}/branches:
+    parameters:
+      - $ref: '#/components/parameters/RestaurantId'
+      - $ref: '#/components/parameters/MemberId'
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    
+    get:
+      tags: [Branch Access]
+      summary: Get member's accessible branches
+      description: |
+        Get list of branches that a staff member can access.
+        
+        **Required role:** Owner or Manager
+      responses:
+        '200':
+          description: List of accessible branches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member_id:
+                    type: integer
+                    example: 5
+                  member_name:
+                    type: string
+                    example: "John Smith"
+                  access_type:
+                    type: string
+                    enum: [all_branches, specific_branches]
+                    description: Whether member has access to all branches or specific ones
+                    example: "specific_branches"
+                  branches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Branch'
+              example:
+                member_id: 5
+                member_name: "John Smith"
+                access_type: "specific_branches"
+                branches:
+                  - id: 1
+                    restaurant_id: 100
+                    name: "Downtown Branch"
+                    address: "123 Main St, New York, NY"
+                    is_active: true
+                  - id: 2
+                    restaurant_id: 100
+                    name: "Uptown Branch"
+                    address: "456 Broadway, New York, NY"
+                    is_active: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags: [Branch Access]
+      summary: Update member's branch access
+      description: |
+        Replace the list of branches a staff member can access.
+        
+        **Required role:** Owner only
+        
+        **Behavior:**
+        - Empty array `[]` = Access to all branches
+        - Array with IDs `[1, 2, 3]` = Access only to specified branches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - branch_ids
+              properties:
+                branch_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: |
+                    List of branch IDs member can access.
+                    Empty array = all branches.
+                  example: [1, 3]
+            examples:
+              specificBranches:
+                summary: Grant access to specific branches
+                value:
+                  branch_ids: [1, 3]
+              allBranches:
+                summary: Grant access to all branches
+                value:
+                  branch_ids: []
+              singleBranch:
+                summary: Grant access to single branch
+                value:
+                  branch_ids: [2]
+      responses:
+        '200':
+          description: Branch access updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member_id:
+                    type: integer
+                    example: 5
+                  access_type:
+                    type: string
+                    enum: [all_branches, specific_branches]
+                    example: "specific_branches"
+                  branch_ids:
+                    type: array
+                    items:
+                      type: integer
+                    example: [1, 3]
+                  updated_at:
+                    type: string
+                    format: date-time
+                    example: "2024-02-13T10:30:00Z"
+        '400':
+          description: Invalid branch IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: "invalid_branch_ids"
+                  message: "One or more branch IDs do not belong to this restaurant"
+                  details:
+                    invalid_ids: [5, 10]
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # ROLES & PERMISSIONS (custom roles)
+  # ============================================================================
+  
+  /restaurants/{restaurantId}/roles:
+    parameters:
+      - $ref: '#/components/parameters/RestaurantId'
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    
+    get:
+      tags: [Roles & Permissions]
+      summary: List restaurant roles
+      description: |
+        Get all roles available for this restaurant.
+        
+        **Includes:**
+        - System default roles (owner, manager, staff)
+        - Custom roles created by restaurant
+        
+        **Required role:** Owner or Manager
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+              example:
+                data:
+                  - id: 1
+                    name: "owner"
+                    is_system: true
+                    is_custom: false
+                    permissions:
+                      - id: 1
+                        resource: "restaurant"
+                        action: "*"
+                      - id: 2
+                        resource: "members"
+                        action: "*"
+                      - id: 3
+                        resource: "menu"
+                        action: "*"
+                      - id: 4
+                        resource: "orders"
+                        action: "*"
+                  - id: 2
+                    name: "manager"
+                    is_system: true
+                    is_custom: false
+                    permissions:
+                      - id: 5
+                        resource: "menu"
+                        action: "read"
+                      - id: 6
+                        resource: "menu"
+                        action: "update"
+                      - id: 7
+                        resource: "orders"
+                        action: "read"
+                      - id: 8
+                        resource: "orders"
+                        action: "update"
+                  - id: 3
+                    name: "staff"
+                    is_system: true
+                    is_custom: false
+                    permissions:
+                      - id: 9
+                        resource: "orders"
+                        action: "read"
+                      - id: 10
+                        resource: "orders"
+                        action: "update"
+                  - id: 10
+                    name: "kitchen_staff"
+                    is_system: false
+                    is_custom: true
+                    permissions:
+                      - id: 9
+                        resource: "orders"
+                        action: "read"
+                      - id: 10
+                        resource: "orders"
+                        action: "update"
+                      - id: 11
+                        resource: "menu"
+                        action: "read"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    
+    post:
+      tags: [Roles & Permissions]
+      summary: Create custom role
+      description: |
+        Create a custom role with specific permissions.
+        
+        **Required role:** Owner only
+        
+        **Use cases:**
+        - Kitchen staff (can view orders and menu, but not accept/reject)
+        - Delivery coordinator (can view orders and assign delivery)
+        - Inventory manager (can update menu availability)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - permission_ids
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: '^[a-z_]+$'
+                  description: Role name (lowercase, underscores only)
+                  example: "kitchen_staff"
+                description:
+                  type: string
+                  maxLength: 200
+                  description: Role description
+                  example: "Kitchen staff can view and update order status"
+                permission_ids:
+                  type: array
+                  items:
+                    type: integer
+                  minItems: 1
+                  description: List of permission IDs to assign to this role
+                  example: [9, 10, 11]
+            examples:
+              kitchenStaff:
+                summary: Kitchen staff role
+                value:
+                  name: "kitchen_staff"
+                  description: "Can view orders and update preparation status"
+                  permission_ids: [9, 10, 11]
+              deliveryCoordinator:
+                summary: Delivery coordinator role
+                value:
+                  name: "delivery_coordinator"
+                  description: "Can view orders and manage delivery assignments"
+                  permission_ids: [9, 10, 15, 16]
+      responses:
+        '201':
+          description: Custom role created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+              example:
+                id: 10
+                name: "kitchen_staff"
+                description: "Can view orders and update preparation status"
+                is_system: false
+                is_custom: true
+                permissions:
+                  - id: 9
+                    resource: "orders"
+                    action: "read"
+                  - id: 10
+                    resource: "orders"
+                    action: "update"
+                  - id: 11
+                    resource: "menu"
+                    action: "read"
+                created_at: "2024-02-13T10:30:00Z"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                duplicateRole:
+                  value:
+                    error:
+                      code: "role_already_exists"
+                      message: "Role with this name already exists"
+                invalidPermissions:
+                  value:
+                    error:
+                      code: "invalid_permissions"
+                      message: "One or more permission IDs are invalid"
+                      details:
+                        invalid_ids: [99, 100]
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /restaurants/{restaurantId}/roles/{roleId}:
+    parameters:
+      - $ref: '#/components/parameters/RestaurantId'
+      - $ref: '#/components/parameters/RoleId'
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    
+    get:
+      tags: [Roles & Permissions]
+      summary: Get role details
+      description: Get detailed information about a specific role
+      responses:
+        '200':
+          description: Role details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    patch:
+      tags: [Roles & Permissions]
+      summary: Update custom role
+      description: |
+        Update a custom role's name, description, or permissions.
+        
+        **Required role:** Owner only
+        
+        **Note:** Cannot update system roles (owner, manager, staff)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  example: "senior_kitchen_staff"
+                description:
+                  type: string
+                  maxLength: 200
+                  example: "Senior kitchen staff with menu update permissions"
+                permission_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Complete list of permission IDs (replaces existing)
+                  example: [9, 10, 11, 12]
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          description: Cannot update system role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: "cannot_modify_system_role"
+                  message: "System roles cannot be modified"
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags: [Roles & Permissions]
+      summary: Delete custom role
+      description: |
+        Delete a custom role.
+        
+        **Required role:** Owner only
+        
+        **Note:** 
+        - Cannot delete system roles
+        - Cannot delete role if members are assigned to it
+      responses:
+        '204':
+          description: Role deleted successfully
+        '400':
+          description: Cannot delete role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                systemRole:
+                  value:
+                    error:
+                      code: "cannot_delete_system_role"
+                      message: "System roles cannot be deleted"
+                roleInUse:
+                  value:
+                    error:
+                      code: "role_in_use"
+                      message: "Cannot delete role while members are assigned to it"
+                      details:
+                        member_count: 3
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /restaurants/{restaurantId}/permissions:
+    parameters:
+      - $ref: '#/components/parameters/RestaurantId'
+      - $ref: '#/components/parameters/AuthorizationHeader'
+    
+    get:
+      tags: [Roles & Permissions]
+      summary: List available permissions
+      description: |
+        Get all available permissions that can be assigned to roles.
+        
+        **Required role:** Owner or Manager
+      responses:
+        '200':
+          description: List of permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Permission'
+              example:
+                data:
+                  - id: 1
+                    resource: "restaurant"
+                    action: "read"
+                    description: "View restaurant details"
+                  - id: 2
+                    resource: "restaurant"
+                    action: "update"
+                    description: "Update restaurant details"
+                  - id: 3
+                    resource: "members"
+                    action: "read"
+                    description: "View staff members"
+                  - id: 4
+                    resource: "members"
+                    action: "create"
+                    description: "Add staff members"
+                  - id: 5
+                    resource: "members"
+                    action: "update"
+                    description: "Update staff member roles"
+                  - id: 6
+                    resource: "members"
+                    action: "delete"
+                    description: "Remove staff members"
+                  - id: 7
+                    resource: "menu"
+                    action: "read"
+                    description: "View menu items"
+                  - id: 8
+                    resource: "menu"
+                    action: "create"
+                    description: "Create menu items"
+                  - id: 9
+                    resource: "menu"
+                    action: "update"
+                    description: "Update menu items"
+                  - id: 10
+                    resource: "menu"
+                    action: "delete"
+                    description: "Delete menu items"
+                  - id: 11
+                    resource: "orders"
+                    action: "read"
+                    description: "View orders"
+                  - id: 12
+                    resource: "orders"
+                    action: "update"
+                    description: "Update order status"
+                  - id: 13
+                    resource: "orders"
+                    action: "accept"
+                    description: "Accept orders"
+                  - id: 14
+                    resource: "orders"
+                    action: "reject"
+                    description: "Reject orders"
+                  - id: 15
+                    resource: "analytics"
+                    action: "read"
+                    description: "View analytics and reports"
+
+  # ============================================================================
+  # CART
+  # ============================================================================
+  
+  /customers/me/cart:
+    get:
+      tags: [Cart]
+      summary: Get current cart
+      responses:
+        '200':
+          description: Cart contents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+    
+    delete:
+      tags: [Cart]
+      summary: Clear cart
+      responses:
+        '204':
+          description: Cart cleared
+
+  /customers/me/cart/items:
+    post:
+      tags: [Cart]
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - quantity
+              properties:
+                product_id:
+                  type: integer
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+                customizations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      customization_id:
+                        type: integer
+                      selected_option_id:
+                        type: integer
+      responses:
+        '201':
+          description: Item added to cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: Invalid request (e.g., item from different restaurant)
+
+  /customers/me/cart/items/{cart_item_id}:
+    parameters:
+      - name: cart_item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    patch:
+      tags: [Cart]
+      summary: Update cart item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+      responses:
+        '200':
+          description: Cart item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+    
+    delete:
+      tags: [Cart]
+      summary: Remove item from cart
+      responses:
+        '204':
+          description: Item removed
+
+  # ============================================================================
+  # ORDERS
+  # ============================================================================
+  
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Place order
+      description: Create new order from cart with payment
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+            format: uuid
+          description: Idempotency key to prevent duplicate orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - customer_address_id
+                - payment_method
+              properties:
+                customer_address_id:
+                  type: integer
+                delivery_instructions:
+                  type: string
+                  maxLength: 500
+                payment_method:
+                  type: string
+                  enum: [online, cod]
+                payment_details:
+                  type: object
+                  description: Required if payment_method is 'online'
+                  properties:
+                    provider_id:
+                      type: integer
+                    payment_method_token:
+                      type: string
+                tip_amount:
+                  type: number
+                  format: decimal
+                  minimum: 0
+                  example: 3.00
+                notes:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid request (cart empty, payment failed, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      tags: [Orders]
+      summary: List customer orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, preparing, ready_for_pickup, picked_up, out_for_delivery, delivered, cancelled, rejected]
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderSummary'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  /orders/{order_id}:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      tags: [Orders]
+      summary: Get order details
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{order_id}/cancel:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Orders]
+      summary: Cancel order
+      description: Customer cancels order (only if not yet picked up)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Order cannot be cancelled (already picked up/delivered)
+
+  /orders/{order_id}/track:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      tags: [Orders]
+      summary: Get real-time order tracking
+      description: Get current order status and delivery agent location
+      responses:
+        '200':
+          description: Tracking information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderTracking'
+
+  # ============================================================================
+  # RESTAURANT MANAGEMENT
+  # ============================================================================
+  
+  /restaurants/me:
+    get:
+      tags: [Restaurants]
+      summary: Get my restaurant profile
+      description: For restaurant owners/managers/staff
+      responses:
+        '200':
+          description: Restaurant profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+    
+    patch:
+      tags: [Restaurants]
+      summary: Update restaurant profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                description:
+                  type: string
+                phone:
+                  type: string
+                commission:
+                  type: number
+                  format: decimal
+                  minimum: 0
+                  maximum: 100
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Restaurant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+
+  /restaurants/me/branches:
+    get:
+      tags: [Restaurants]
+      summary: List restaurant branches
+      responses:
+        '200':
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Branch'
+
+  /restaurants/me/menu/categories:
+    get:
+      tags: [Menu]
+      summary: List menu categories
+      responses:
+        '200':
+          description: Menu categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuCategory'
+    
+    post:
+      tags: [Menu]
+      summary: Create menu category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                display_order:
+                  type: integer
+      responses:
+        '201':
+          description: Category created
+
+  /restaurants/me/menu/items:
+    get:
+      tags: [Menu]
+      summary: List menu items
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuItem'
+    
+    post:
+      tags: [Menu]
+      summary: Create menu item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuItemInput'
+      responses:
+        '201':
+          description: Menu item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+
+  /restaurants/me/menu/items/{item_id}:
+    parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    patch:
+      tags: [Menu]
+      summary: Update menu item
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuItemInput'
+      responses:
+        '200':
+          description: Menu item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+    
+    delete:
+      tags: [Menu]
+      summary: Delete menu item
+      responses:
+        '204':
+          description: Menu item deleted
+
+  /restaurants/me/menu/items/{item_id}/availability:
+    parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    patch:
+      tags: [Menu]
+      summary: Update item availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_available
+              properties:
+                is_available:
+                  type: boolean
+                branch_id:
+                  type: integer
+                  description: If provided, updates for specific branch only
+      responses:
+        '200':
+          description: Availability updated
+
+  /restaurants/me/orders:
+    get:
+      tags: [Orders]
+      summary: List restaurant orders
+      description: Get orders for restaurant with filtering
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, preparing, ready_for_pickup, picked_up, out_for_delivery, delivered, cancelled, rejected]
+        - name: branch_id
+          in: query
+          schema:
+            type: integer
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  /restaurants/me/orders/{order_id}/accept:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Orders]
+      summary: Accept order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - estimated_ready_time
+              properties:
+                estimated_ready_time:
+                  type: string
+                  format: date-time
+                  description: When order will be ready for pickup
+      responses:
+        '200':
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /restaurants/me/orders/{order_id}/reject:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Orders]
+      summary: Reject order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+                - reason_code
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+                reason_code:
+                  type: string
+                  enum: [out_of_stock, closing_early, too_busy, other]
+      responses:
+        '200':
+          description: Order rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /restaurants/me/orders/{order_id}/status:
+    parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    patch:
+      tags: [Orders]
+      summary: Update order status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [preparing, ready_for_pickup]
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /restaurants/me/staff:
+    get:
+      tags: [Restaurants]
+      summary: List restaurant staff
+      responses:
+        '200':
+          description: Staff members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RestaurantMember'
+    
+    post:
+      tags: [Restaurants]
+      summary: Add staff member
+      description: Owner only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - role_id
+              properties:
+                user_id:
+                  type: integer
+                role_id:
+                  type: integer
+                branch_id:
+                  type: integer
+      responses:
+        '201':
+          description: Staff member added
+        '403':
+          description: Only owners can add staff
+
+  /restaurants/me/balance:
+    get:
+      tags: [Restaurants]
+      summary: Get restaurant balance
+      description: View current balance and transaction history
+      responses:
+        '200':
+          description: Balance information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: number
+                    format: decimal
+                    example: 1234.56
+                  pending_amount:
+                    type: number
+                    format: decimal
+                    example: 256.78
+                  total_earned:
+                    type: number
+                    format: decimal
+                    example: 45678.90
+                  updated_at:
+                    type: string
+                    format: date-time
+
+  /restaurants/me/payouts:
+    get:
+      tags: [Restaurants]
+      summary: List payouts
+      responses:
+        '200':
+          description: Payout history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payout'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  # ============================================================================
+  # DELIVERY AGENTS
+  # ============================================================================
+  
+  /agents/me:
+    get:
+      tags: [Delivery]
+      summary: Get agent profile
+      responses:
+        '200':
+          description: Agent profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryAgent'
+    
+    patch:
+      tags: [Delivery]
+      summary: Update agent profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                vehicle_type:
+                  type: string
+                  enum: [bike, scooter, car]
+      responses:
+        '200':
+          description: Profile updated
+
+  /agents/me/status:
+    patch:
+      tags: [Delivery]
+      summary: Update agent status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [available, busy, offline]
+      responses:
+        '200':
+          description: Status updated
+
+  /agents/me/location:
+    post:
+      tags: [Delivery]
+      summary: Update agent location
+      description: Real-time location updates (every 10 seconds during delivery)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - latitude
+                - longitude
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                  minimum: -90
+                  maximum: 90
+                longitude:
+                  type: number
+                  format: double
+                  minimum: -180
+                  maximum: 180
+                accuracy:
+                  type: number
+                  format: float
+                  description: GPS accuracy in meters
+                bearing:
+                  type: integer
+                  minimum: 0
+                  maximum: 359
+                  description: Direction in degrees
+                speed:
+                  type: number
+                  format: float
+                  description: Speed in km/h
+      responses:
+        '200':
+          description: Location updated
+
+  /agents/me/deliveries:
+    get:
+      tags: [Delivery]
+      summary: List agent deliveries
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [assigned, accepted, picked_up, delivered, rejected]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Delivery'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  /agents/me/deliveries/{delivery_id}/accept:
+    parameters:
+      - name: delivery_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Delivery]
+      summary: Accept delivery assignment
+      responses:
+        '200':
+          description: Delivery accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+  /agents/me/deliveries/{delivery_id}/reject:
+    parameters:
+      - name: delivery_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Delivery]
+      summary: Reject delivery assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+                - reason_code
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+                reason_code:
+                  type: string
+                  enum: [distance, busy, wrong_direction, other]
+      responses:
+        '200':
+          description: Delivery rejected
+
+  /agents/me/deliveries/{delivery_id}/pickup:
+    parameters:
+      - name: delivery_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Delivery]
+      summary: Mark order picked up from restaurant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - verification_code
+              properties:
+                verification_code:
+                  type: string
+                  pattern: '^\d{4,6}$'
+                pickup_timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Order picked up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+
+  /agents/me/deliveries/{delivery_id}/deliver:
+    parameters:
+      - name: delivery_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Delivery]
+      summary: Mark order delivered to customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - verification_code
+              properties:
+                verification_code:
+                  type: string
+                  pattern: '^\d{4,6}$'
+                delivery_timestamp:
+                  type: string
+                  format: date-time
+                photo_url:
+                  type: string
+                  format: uri
+                  description: Proof of delivery photo
+                signature:
+                  type: string
+                  description: Base64 encoded signature
+                notes:
+                  type: string
+                  maxLength: 500
+                cash_collected:
+                  type: number
+                  format: decimal
+                  description: Required if payment method is COD
+      responses:
+        '200':
+          description: Order delivered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delivery:
+                    $ref: '#/components/schemas/Delivery'
+                  earnings:
+                    type: object
+                    properties:
+                      delivery_fee:
+                        type: number
+                        format: decimal
+                      tip:
+                        type: number
+                        format: decimal
+                      total:
+                        type: number
+                        format: decimal
+
+  /agents/me/earnings:
+    get:
+      tags: [Delivery]
+      summary: Get earnings summary
+      parameters:
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Earnings summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_deliveries:
+                    type: integer
+                  total_earnings:
+                    type: number
+                    format: decimal
+                  base_earnings:
+                    type: number
+                    format: decimal
+                  tips:
+                    type: number
+                    format: decimal
+                  bonuses:
+                    type: number
+                    format: decimal
+                  daily_breakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        deliveries:
+                          type: integer
+                        earnings:
+                          type: number
+                          format: decimal
+
+  # ============================================================================
+  # PAYMENTS
+  # ============================================================================
+  
+  /payments/methods:
+    get:
+      tags: [Payments]
+      summary: List saved payment methods
+      responses:
+        '200':
+          description: Payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+    
+    post:
+      tags: [Payments]
+      summary: Add payment method
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider_id
+                - payment_method_token
+              properties:
+                provider_id:
+                  type: integer
+                payment_method_token:
+                  type: string
+                  description: Token from payment provider (e.g., Stripe)
+      responses:
+        '201':
+          description: Payment method added
+
+  /payments/methods/{payment_method_id}:
+    parameters:
+      - name: payment_method_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    delete:
+      tags: [Payments]
+      summary: Remove payment method
+      responses:
+        '204':
+          description: Payment method removed
+
+  # ============================================================================
+  # NOTIFICATIONS
+  # ============================================================================
+  
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [unread, read, all]
+            default: all
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+
+  /notifications/{notification_id}/read:
+    parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Notifications]
+      summary: Mark notification as read
+      responses:
+        '200':
+          description: Marked as read
+
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Get notification preferences
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email_enabled:
+                    type: boolean
+                  sms_enabled:
+                    type: boolean
+                  push_enabled:
+                    type: boolean
+    
+    patch:
+      tags: [Notifications]
+      summary: Update notification preferences
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email_enabled:
+                  type: boolean
+                sms_enabled:
+                  type: boolean
+                push_enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Preferences updated
+
+  # ============================================================================
+  # ADMIN
+  # ============================================================================
+  
+  /admin/restaurants:
+    get:
+      tags: [Admin]
+      summary: List all restaurants
+      description: Admin only
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, suspended]
+        - name: region
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of restaurants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Restaurant'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  /admin/orders:
+    get:
+      tags: [Admin]
+      summary: List all orders
+      description: Admin only
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: restaurant_id
+          in: query
+          schema:
+            type: integer
+        - name: customer_id
+          in: query
+          schema:
+            type: integer
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/CursorPagination'
+
+  /admin/payments/{payment_id}/refund:
+    parameters:
+      - name: payment_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      tags: [Admin]
+      summary: Issue refund
+      description: Admin only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - reason
+                - reason_code
+              properties:
+                amount:
+                  type: number
+                  format: decimal
+                reason:
+                  type: string
+                  maxLength: 500
+                reason_code:
+                  type: string
+                  enum: [order_cancelled, customer_request, quality_issue, other]
+      responses:
+        '200':
+          description: Refund issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
+
+  /admin/analytics/overview:
+    get:
+      tags: [Admin]
+      summary: Get system analytics
+      description: Admin only
+      parameters:
+        - name: from_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: region
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_orders:
+                    type: integer
+                  completed_orders:
+                    type: integer
+                  cancelled_orders:
+                    type: integer
+                  total_gmv:
+                    type: number
+                    format: decimal
+                  platform_revenue:
+                    type: number
+                    format: decimal
+                  average_order_value:
+                    type: number
+                    format: decimal
+
+# ==============================================================================
+# COMPONENTS
+# ==============================================================================
+
+components:
+  parameters:
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+      description: JWT Bearer token
+    RestaurantId:
+      name: restaurantId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Restaurant ID
+      example: 100
+
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Restaurant member ID
+      example: 5
+
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Role ID
+      example: 2
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: "manager"
+        description:
+          type: string
+          example: "Can manage menu and orders"
+        is_system:
+          type: boolean
+          description: Whether this is a system-defined role
+          example: true
+        is_custom:
+          type: boolean
+          description: Whether this is a custom role created by restaurant
+          example: false
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-02-10T14:20:00Z"
+    Permission:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        resource:
+          type: string
+          description: Resource the permission applies to
+          example: "menu"
+        action:
+          type: string
+          description: Action allowed on the resource
+          enum: [read, create, update, delete, "*"]
+          example: "update"
+        description:
+          type: string
+          example: "Update menu items"
+    # ========================================================================
+    # USER & AUTHENTICATION
+    # ========================================================================
+    
+    User:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        name:
+          type: string
+          example: John Doe
+        phone:
+          type: string
+          example: "+12125551234"
+        role:
+          type: string
+          enum: [customer, restaurant_member, delivery_agent, admin]
+        status:
+          type: string
+          enum: [available, blocked]
+
+    # ========================================================================
+    # CUSTOMER
+    # ========================================================================
+    
+    Customer:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            default_address:
+              $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        label:
+          type: string
+          example: Home
+        text:
+          type: string
+          example: 123 Main St, Apt 4B, New York, NY 10001
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    AddressInput:
+      type: object
+      required:
+        - label
+        - lat
+        - lng
+        - text
+      properties:
+        label:
+          type: string
+          maxLength: 50
+        lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        text:
+          type: string
+          maxLength: 500
+        is_default:
+          type: boolean
+
+    # ========================================================================
+    # RESTAURANT
+    # ========================================================================
+    
+    RestaurantSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        primary_country:
+          type: string
+        logo_url:
+          type: string
+          format: uri
+        is_active:
+          type: boolean
+    Restaurant:
+      allOf:
+        - $ref: '#/components/schemas/RestaurantSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+            branches:
+              type: array
+              items:
+                $ref: '#/components/schemas/Branch'
+            created_at:
+              type: string
+              format: date-time
+
+    Branch:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurant_id:
+          type: integer
+        subcode:
+          type: string
+        label:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        country_code:
+          type: string
+        opens_at:
+          type: string
+        closes_at:
+          type: string
+        currency:
+          type: string
+        is_active:
+          type: boolean
+
+    RestaurantMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        restaurant_id:
+          type: integer
+        status:
+          type: string
+        role:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+              example: manager
+            permissions:
+              type: array
+              items:
+                type: string
+
+    # ========================================================================
+    # MENU
+    # ========================================================================
+    
+    MenuCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        display_order:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+
+    MenuItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        image_url:
+          type: string
+          format: uri
+        price:
+          type: number
+          format: decimal
+        is_available:
+          type: boolean
+        customizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuCustomization'
+        created_at:
+          type: string
+          format: date-time
+
+    MenuCustomization:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Size
+        type:
+          type: string
+          enum: [single, multiple]
+        is_required:
+          type: boolean
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomizationOption'
+
+    CustomizationOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Large
+        price_modifier:
+          type: number
+          format: decimal
+          example: 2.00
+        is_available:
+          type: boolean
+
+    MenuItemInput:
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        category_id:
+          type: integer
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        image_url:
+          type: string
+          format: uri
+        is_available:
+          type: boolean
+
+    # ========================================================================
+    # CART
+    # ========================================================================
+    
+    Cart:
+      type: object
+      properties:
+        cart_id:
+          type: string
+        customer_id:
+          type: integer
+        restaurant_id:
+          type: integer
+        restaurant_name:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        subtotal:
+          type: number
+          format: decimal
+        delivery_fee:
+          type: number
+          format: decimal
+        tax:
+          type: number
+          format: decimal
+        total:
+          type: number
+          format: decimal
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+        unit_price:
+          type: number
+          format: decimal
+        customizations:
+          type: array
+          items:
+            type: object
+            properties:
+              customization_name:
+                type: string
+              selected_option_name:
+                type: string
+              price_modifier:
+                type: number
+                format: decimal
+        subtotal:
+          type: number
+          format: decimal
+
+    # ========================================================================
+    # ORDER
+    # ========================================================================
+    
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer_id:
+          type: integer
+        restaurant_id:
+          type: integer
+        restaurant_name:
+          type: string
+        country_code:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, preparing, ready_for_pickup, picked_up, out_for_delivery, delivered, cancelled, rejected]
+        subtotal:
+          type: number
+          format: decimal
+        delivery_fee:
+          type: number
+          format: decimal
+        service_fee:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Order:
+      allOf:
+        - $ref: '#/components/schemas/OrderSummary'
+        - type: object
+          properties:
+            branch_id:
+              type: integer
+            customer_address_id:
+              type: integer
+            delivery_address_text:
+              type: string
+            delivery_lat:
+              type: number
+              format: double
+            delivery_long:
+              type: number
+              format: double
+            delivery_agent_id:
+              type: integer
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderItem'
+            payment:
+              $ref: '#/components/schemas/Payment'
+            timeline:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderTimelineEvent'
+            accepted_at:
+              type: string
+              format: date-time
+            picked_up_at:
+              type: string
+              format: date-time
+            assigned_at:
+              type: string
+              format: date-time
+            delivered_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        unit_price_snapshot:
+          type: number
+          format: decimal
+        name_snapshot:
+          type: string
+        image_url_snapshot:
+          type: string
+        customizations:
+          type: array
+          items:
+            type: object
+        created_at:
+          type: string
+          format: date-time
+
+    OrderTimelineEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        from_status:
+          type: string
+        to_status:
+          type: string
+        changed_by:
+          type: integer
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    OrderTracking:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        status:
+          type: string
+        restaurant:
+          type: object
+          properties:
+            name:
+              type: string
+            latitude:
+              type: number
+              format: double
+            longitude:
+              type: number
+              format: double
+        delivery_address:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: double
+            longitude:
+              type: number
+              format: double
+        agent:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            phone:
+              type: string
+            vehicle_type:
+              type: string
+            current_location:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                longitude:
+                  type: number
+                  format: double
+                bearing:
+                  type: integer
+                updated_at:
+                  type: string
+                  format: date-time
+        estimated_delivery_time:
+          type: string
+          format: date-time
+
+    # ========================================================================
+    # PAYMENT
+    # ========================================================================
+    
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        method:
+          type: string
+          enum: [online, cod]
+        provider_id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, authorized, captured, failed, refunded]
+        amount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        provider_reference_id:
+          type: string
+        idempotency_key:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PaymentMethod:
+      type: object
+      properties:
+        id:
+          type: integer
+        provider_id:
+          type: integer
+        provider_name:
+          type: string
+        type:
+          type: string
+          example: card
+        last_four:
+          type: string
+          example: "4242"
+        brand:
+          type: string
+          example: visa
+        expiry_month:
+          type: integer
+        expiry_year:
+          type: integer
+        is_default:
+          type: boolean
+
+    Refund:
+      type: object
+      properties:
+        id:
+          type: integer
+        payment_id:
+          type: integer
+        order_id:
+          type: integer
+        amount:
+          type: number
+          format: decimal
+        reason:
+          type: string
+        reason_code:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    # ========================================================================
+    # DELIVERY
+    # ========================================================================
+    
+    DeliveryAgent:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        vehicle_type:
+          type: string
+          enum: [bike, scooter, car]
+        status:
+          type: string
+          enum: [available, busy, offline]
+        rating:
+          type: number
+          format: float
+        total_deliveries:
+          type: integer
+        current_latitude:
+          type: number
+          format: double
+        current_longitude:
+          type: number
+          format: double
+        created_at:
+          type: string
+          format: date-time
+
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        agent_id:
+          type: integer
+        status:
+          type: string
+          enum: [assigned, accepted, picked_up, delivered, rejected]
+        restaurant:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            latitude:
+              type: number
+              format: double
+            longitude:
+              type: number
+              format: double
+        customer:
+          type: object
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            address:
+              type: string
+            latitude:
+              type: number
+              format: double
+            longitude:
+              type: number
+              format: double
+        payment_method:
+          type: string
+        tip_amount:
+          type: number
+          format: decimal
+        delivery_fee:
+          type: number
+          format: decimal
+        assigned_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+        picked_up_at:
+          type: string
+          format: date-time
+        delivered_at:
+          type: string
+          format: date-time
+
+    # ========================================================================
+    # PAYOUT
+    # ========================================================================
+    
+    Payout:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurant_id:
+          type: integer
+        amount:
+          type: number
+          format: decimal
+        admin_user_id:
+          type: integer
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # ========================================================================
+    # NOTIFICATION
+    # ========================================================================
+    
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        type:
+          type: string
+          enum: [email, sms, push]
+        channel:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          type: string
+          enum: [pending, sent, failed, read]
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+
+    # ========================================================================
+    # COMMON
+    # ========================================================================
+    
+    CursorPagination:
+      type: object
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+        has_more:
+          type: boolean
+        total_count:
+          type: integer
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: validation_error
+            message:
+              type: string
+              example: Invalid request parameters
+            details:
+              type: object
+              example:
+                  message: Email or password is Invalid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: validation_error
+              message: Invalid request parameters
+              details:
+                email: Email is required
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: unauthorized
+              message: Invalid email or password
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: forbidden
+              message: Insufficient permissions
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: not_found
+              message: Resource not found
