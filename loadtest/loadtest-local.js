@@ -134,7 +134,15 @@ function placeOrder(region, restaurant) {
   const customerId = orderableCustomer();
   const nItems = randInt(1, 3);
   const items = [];
-  for (let i = 0; i < nItems; i++) items.push({ productId: productOf(restaurant), quantity: randInt(1, 3) });
+  const usedProducts = new Set();
+  for (let i = 0; i < nItems; i++) {
+    let pid = productOf(restaurant);
+    while (usedProducts.has(pid)) {
+      pid = productOf(restaurant);
+    }
+    usedProducts.add(pid);
+    items.push({ productId: pid, quantity: randInt(1, 3) });
+  }
   const body = JSON.stringify({
     branchId: branchId,
     customerAddressId: customerId, // address.id == user.id in the seed
