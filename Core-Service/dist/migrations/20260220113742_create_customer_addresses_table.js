@@ -1,0 +1,27 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.up = up;
+exports.down = down;
+async function up(knex) {
+    await knex.raw(`
+        CREATE TABLE customer_addresses (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        label TEXT NOT NULL,
+        country TEXT NOT NULL,
+        city TEXT NOT NULL,
+        street TEXT NOT NULL,
+        building TEXT,
+        apartment_number TEXT,
+        type TEXT NOT NULL CHECK (type IN ('home', 'office', 'public_place')),
+        lat DECIMAL(10, 7) NOT NULL,
+        lng DECIMAL(10, 7) NOT NULL,
+        is_default BOOLEAN NOT NULL,
+        constraint fk_customer_addresses_user_id foreign key (user_id) references users(id)
+        );
+CREATE INDEX idx_customer_addresses_user_id ON customer_addresses(user_id);
+`);
+}
+async function down(knex) {
+    await knex.raw(`DROP TABLE IF EXISTS customer_addresses;`);
+}

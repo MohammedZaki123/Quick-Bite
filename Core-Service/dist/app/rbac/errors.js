@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RoleQueryRequiredError = exports.IncorrectBranches = exports.CannotDeleteOwnerError = exports.MemberNotFoundError = exports.RoleNotFoundError = exports.CannotCreateOwnerUserError = void 0;
+const AppError_1 = require("../../lib/error/AppError");
+exports.CannotCreateOwnerUserError = new AppError_1.AppError('Not allowed to create another owner', 400);
+exports.RoleNotFoundError = new AppError_1.AppError('Role not found', 404);
+exports.MemberNotFoundError = new AppError_1.AppError('Member not found', 404);
+exports.CannotDeleteOwnerError = new AppError_1.AppError('Cannot delete the restaurant owner', 400);
+exports.IncorrectBranches = new AppError_1.AppError('One or more branch IDs do not belong to this restaurant', 400);
+exports.RoleQueryRequiredError = new AppError_1.AppError('role query is required', 400);

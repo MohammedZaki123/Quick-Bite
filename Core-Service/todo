@@ -1,0 +1,12 @@
+Outcome:
+1. Auth system (sign up, login, logout, reset password)
+2. Users (/me and /update)
+3. Customer addresses (CRUD)
+
+
+-----------------------
+1- Create DB Tables ( users, customer_addresses , password_resets)
+2- Implement Auth System.
+3- Implement User Module
+4- Implement Customer Addresses Module
+5- Test and wire everything together.

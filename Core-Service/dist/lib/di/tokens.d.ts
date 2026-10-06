@@ -1,0 +1,20 @@
+export declare const TOKENS: {
+    AuthService: symbol;
+    UserService: symbol;
+    RestaurantService: symbol;
+    BranchService: symbol;
+    MemberService: symbol;
+    ProductService: symbol;
+    CustomerAddressService: symbol;
+    PermissionCacheService: symbol;
+    AuthController: symbol;
+    UserController: symbol;
+    RestaurantController: symbol;
+    BranchController: symbol;
+    MemberController: symbol;
+    ProductController: symbol;
+    CustomerAddressController: symbol;
+    Logger: symbol;
+    CacheProvider: symbol;
+    EmailProvider: symbol;
+};

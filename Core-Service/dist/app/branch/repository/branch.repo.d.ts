@@ -1,0 +1,23 @@
+import { Branch } from "../entity/branch.entity";
+import { Knex } from "knex";
+import { PaginationParams, FilterParams } from "../../../lib/http/pagination/cursor-pagination";
+export declare function findBranchById(id: number): Promise<Branch | undefined>;
+export declare function createBranch(branch: Partial<Branch>, conn?: Knex): Promise<Branch>;
+export declare function findNearByBranches(lat: number, lng: number, params?: PaginationParams, filters?: FilterParams[]): Promise<{
+    id: any;
+    restaurantId: any;
+    addressText: any;
+    label: any;
+    lat: any;
+    lng: any;
+    isActive: any;
+    acceptOrders: any;
+    currency: any;
+    deliveryRadius: any;
+    restaurantName: any;
+    logoUrl: any;
+}[]>;
+export declare function getBranchesByRestaurantId(restaurantID: number, params?: PaginationParams, filters?: FilterParams[]): Promise<Branch[]>;
+export declare function updateBranch(branchId: number, data: Partial<Branch>, conn?: Knex): Promise<Branch>;
+export declare function updateBranchStatus(branchId: number, data: Partial<Branch>, conn?: Knex): Promise<Branch>;
+export declare function findBranchesByIds(ids: number[]): Promise<Branch[]>;
