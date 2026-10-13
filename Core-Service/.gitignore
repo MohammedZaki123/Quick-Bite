@@ -10,4 +10,4 @@ yarn-error.log*
 .env
 .env.test
 .vscode/*
-.dist/*
+/dist*
