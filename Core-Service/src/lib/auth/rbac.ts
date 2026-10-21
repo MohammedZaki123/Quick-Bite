@@ -71,6 +71,14 @@ export function rbac (option: RBACOptions) {
 
     }
 }
+
+// Service-level role check (not a middleware) — throws when the user's system
+// role is not one of the allowed ones. e.g. requireSystemRole(role, [SystemRole.SYSTEM_ADMIN])
+export function requireSystemRole(userRole: SystemRole, allowed: SystemRole[]) {
+    if (!allowed.includes(userRole)) {
+        throw NotAuthorized;
+    }
+}
 export function requireRestaurantMember(paramName: string= 'restaurantId') {
 
     return async (req: Request, res: Response, next: NextFunction) => {

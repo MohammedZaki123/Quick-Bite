@@ -19,6 +19,9 @@ import {cacheProvider} from "../cache/init";
 import {ICacheProvider} from "../../pkg/cache/cache.interface";
 import {IEmailProvider} from "../../pkg/email/email.interface";
 import {emailProvider} from "../email/init";
+import {storageProvider} from "../storage/init";
+import { MediaController } from '../../app/media/controller/media.controller';
+import { MediaService } from '../../app/media/service/media.service';
 
 container.registerSingleton<AuthService>(TOKENS.AuthService, AuthService);
 container.registerSingleton<UserService>(TOKENS.UserService, UserService);
@@ -28,6 +31,7 @@ container.registerSingleton<MemberService>(TOKENS.MemberService, MemberService);
 container.registerSingleton<ProductService>(TOKENS.ProductService, ProductService);
 container.registerSingleton<CustomerAddressService>(TOKENS.CustomerAddressService, CustomerAddressService);
 container.registerSingleton<PermissionCacheService>(TOKENS.PermissionCacheService, PermissionCacheService);
+container.registerSingleton<MediaService>(TOKENS.MediaService, MediaService);
 
 container.registerSingleton<AuthController>(TOKENS.AuthController, AuthController);
 container.registerSingleton<UserController>(TOKENS.UserController, UserController);
@@ -36,9 +40,12 @@ container.registerSingleton<BranchController>(TOKENS.BranchController, BranchCon
 container.registerSingleton<MemberController>(TOKENS.MemberController, MemberController);
 container.registerSingleton<ProductController>(TOKENS.ProductController, ProductController);
 container.registerSingleton<CustomerAddressController>(TOKENS.CustomerAddressController, CustomerAddressController);
+container.registerSingleton<MediaController>(TOKENS.MediaController, MediaController);
+    
 
 
 container.registerInstance(TOKENS.CacheProvider, cacheProvider);
-container.registerInstance(TOKENS.EmailProvider, emailProvider)
+container.registerInstance(TOKENS.EmailProvider, emailProvider);
+container.registerInstance(TOKENS.StorageProvider, storageProvider);
 
 export {container};

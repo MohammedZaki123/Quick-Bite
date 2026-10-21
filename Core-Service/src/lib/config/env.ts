@@ -40,6 +40,14 @@ const schema = z.object({
     MAILJET_SECRET_KEY: z.string(),
     MAILJET_FROM_EMAIL: z.string(),
     MAILJET_FROM_NAME: z.string(),
+
+    // AWS / S3 — media uploads (presigned PUT urls)
+    AWS_REGION: z.string().default("eu-north-1"),
+    AWS_ACCESS_KEY_ID: z.string(),
+    AWS_SECRET_ACCESS_KEY: z.string(),
+    S3_BUCKET: z.string(),
+    CDN_URL: z.string().default(""),
+
     INTERNAL_API_KEY: z.string().default(''),
     // RabbitMQ — used by the outbox worker.
     RABBITMQ_URL: z.string().default("amqp://guest:guest@localhost:5672"),
@@ -87,7 +95,13 @@ export const env = {
         fromEmail: parsed.MAILJET_FROM_EMAIL,
         fromName: parsed.MAILJET_FROM_NAME,
     },
-
+    aws:{
+        region: parsed.AWS_REGION,
+        accessKeyId: parsed.AWS_ACCESS_KEY_ID,
+        secretAccessKey: parsed.AWS_SECRET_ACCESS_KEY,
+        s3Bucket: parsed.S3_BUCKET,
+        cdnUrl: parsed.CDN_URL,
+    },
     internal: {
         apiKey: parsed.INTERNAL_API_KEY,
     },

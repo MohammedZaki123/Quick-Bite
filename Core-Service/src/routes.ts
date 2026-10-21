@@ -7,6 +7,7 @@ import {restaurantRouter} from "./app/restaurant/routes";
 import {branchRouter} from "./app/branch/routes";
 import {productRouter} from "./app/product/routes";
 import {rbacRouter} from "./app/rbac/routes";
+import {mediaRouter} from "./app/media/routes";
 
 export const routes = Router();
 
@@ -25,3 +26,4 @@ routes.use("/", branchRouter);
 routes.use('/', productRouter);
 
 routes.use('/', rbacRouter);
+routes.use('/media', mediaRouter);

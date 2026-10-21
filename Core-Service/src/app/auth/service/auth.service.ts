@@ -202,8 +202,9 @@ export class AuthService {
             expiresAt: new Date(Date.now() + 10 * 60 * 1000), // expires in 15 minutes
             createdAt: new Date(),
         });
+        console.log(`Generated OTP for ${data.email}: ${otp}`);
         const email = passwordResetEmail(otp);
-        await this.emailService.send(data.email, email.subject, email.html);
+        // await this.emailService.send(data.email, email.subject, email.html);
     }
 
     resetPassword = async (data: ResetPasswordDto) => {

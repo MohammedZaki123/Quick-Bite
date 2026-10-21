@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
+    "type": "module",
     "test": "jest",
     "test:integration": "jest --config jest.integration.config.js",
     "build": "tsc",
@@ -19,6 +20,8 @@
     "seed:rbac": "knex --knexfile src/lib/knex/knexfile.ts migrate:run --specific=20260403234043_seed_rbac_tables.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1151.0",
+    "@aws-sdk/s3-request-presigner": "^3.1151.0",
     "@types/amqplib": "^0.10.8",
     "@types/cors": "^2.8.19",
     "@types/helmet": "^0.0.48",
