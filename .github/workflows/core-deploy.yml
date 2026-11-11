@@ -1,14 +1,20 @@
-name: Deploy
+name: Deploy Core Service
 
 on:
   push:
-    branches: [master]
+    branches: [main]
+    paths:
+      - 'Core-Service/**'
+      - '.github/workflows/core-deploy.yml'
   workflow_dispatch: {}
 
 permissions:
   id-token: write
   contents: read
 
+defaults:
+    run:
+        working-directory: Core-Service
 env:
   AWS_REGION: eu-north-1
   ECR_REPO: core-service

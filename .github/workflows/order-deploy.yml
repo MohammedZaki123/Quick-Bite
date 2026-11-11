@@ -1,14 +1,20 @@
-name: Deploy
+name: Deploy Order Service
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'Order-Service/**'
+      - '.github/workflows/order-deploy.yml'
   workflow_dispatch: {}
 
 permissions:
   id-token: write
   contents: read
 
+defaults:
+  run:
+    working-directory: Order-Service
 env:
   AWS_REGION: eu-north-1
   ECR_REPO: order-service
