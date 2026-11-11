@@ -9,11 +9,16 @@ import {env} from "../src/lib/config/env";
 
 const cluster = (process.env.CLUSTER ?? "hot") as "hot" | "archive";
 
+
+const knexfile = __filename.endsWith(".js")
+    ? "dist/lib/knex/knexfile.js"
+    : "src/lib/knex/knexfile.ts";
+
 function run(region: string) {
     console.log(`[${cluster}/${region}] migrate:latest`);
     const res = spawnSync(
         "npx",
-        ["tsx", "node_modules/knex/bin/cli.js", "--knexfile", "src/lib/knex/knexfile.ts", "migrate:latest"],
+        ["knex", "--knexfile", knexfile, "migrate:latest"],
         {
             stdio: "inherit",
             shell: true,

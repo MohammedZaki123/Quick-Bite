@@ -6,7 +6,7 @@ hot path at the target rate of **~54M requests/day ≈ 625 req/s** with
 
 ```
 loadtest/
-  seed-core.sql        # core-service  Postgres (quickbite_core)        — users, restaurants, branches, menus
+  seed-core.sql        # core-service  Postgres (quickbite_core)        — users, restaurants, branches, menus 
   seed-order.sql       # order-service Postgres (order_service_eg/ksa)  — orders, items, payments, balances, earnings
   seed-analytics.js    # analytics-service MongoDB (analytics)          — agg_*_day rollups
   loadtest.js          # k6 load test (local or Grafana Cloud k6)
